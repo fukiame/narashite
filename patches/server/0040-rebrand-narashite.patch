@@ -1,0 +1,242 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: fukiame <fukiame@proton.me>
+Date: Mon, 6 Nov 2023 11:40:39 +0700
+Subject: [PATCH] rebrand - narashite
+
+
+diff --git a/build.gradle.kts b/build.gradle.kts
+index b99daeab0d9a22dde4cd8d7395a5471f91ebc9f6..35ff6bf3cfa2327978e4c8465db35190e7b3b4d9 100644
+--- a/build.gradle.kts
++++ b/build.gradle.kts
+@@ -13,9 +13,9 @@ configurations.named(log4jPlugins.compileClasspathConfigurationName) {
+ val alsoShade: Configuration by configurations.creating
+ 
+ dependencies {
+-    implementation(project(":pufferfish-api")) // Pufferfish // Paper
++    implementation(project(":narashite-api")) // narashite // Pufferfish // Paper
+     // Pufferfish start
+-    implementation("io.papermc.paper:paper-mojangapi:1.19.2-R0.1-SNAPSHOT") {
++    implementation("io.papermc.paper:paper-mojangapi:1.20.2-R0.1-SNAPSHOT") { // narashite
+         exclude("io.papermc.paper", "paper-api")
+     }
+     // Pufferfish end
+@@ -90,7 +90,7 @@ tasks.jar {
+         attributes(
+             "Main-Class" to "org.bukkit.craftbukkit.Main",
+             "Implementation-Title" to "CraftBukkit",
+-            "Implementation-Version" to "git-Pufferfish-$implementationVersion", // Pufferfish
++            "Implementation-Version" to "git-narashite-$implementationVersion", // narashite
+             "Implementation-Vendor" to date, // Paper
+             "Specification-Title" to "Bukkit",
+             "Specification-Version" to project.version,
+diff --git a/src/main/java/com/destroystokyo/paper/Metrics.java b/src/main/java/com/destroystokyo/paper/Metrics.java
+index 692c962193cf9fcc6801fc93f3220bdc673d527b..cf47127dc3334892e82615bfd4662084092acbf6 100644
+--- a/src/main/java/com/destroystokyo/paper/Metrics.java
++++ b/src/main/java/com/destroystokyo/paper/Metrics.java
+@@ -593,7 +593,7 @@ public class Metrics {
+             boolean logFailedRequests = config.getBoolean("logFailedRequests", false);
+             // Only start Metrics, if it's enabled in the config
+             if (config.getBoolean("enabled", true)) {
+-                Metrics metrics = new Metrics("Pufferfish", serverUUID, logFailedRequests, Bukkit.getLogger()); // Pufferfish
++                Metrics metrics = new Metrics("narashite", serverUUID, logFailedRequests, Bukkit.getLogger()); // narashite
+ 
+                 metrics.addCustomChart(new Metrics.SimplePie("minecraft_version", () -> {
+                     String minecraftVersion = Bukkit.getVersion();
+@@ -607,11 +607,11 @@ public class Metrics {
+                 final String implVersion = org.bukkit.craftbukkit.Main.class.getPackage().getImplementationVersion();
+                 if (implVersion != null) {
+                     final String buildOrHash = implVersion.substring(implVersion.lastIndexOf('-') + 1);
+-                    paperVersion = "git-Pufferfish-%s-%s".formatted(Bukkit.getServer().getMinecraftVersion(), buildOrHash); // Pufferfish
++                    paperVersion = "git-narashite-%s-%s".formatted(Bukkit.getServer().getMinecraftVersion(), buildOrHash); // narashite
+                 } else {
+                     paperVersion = "unknown";
+                 }
+-                metrics.addCustomChart(new Metrics.SimplePie("pufferfish_version", () -> paperVersion)); // Pufferfish
++                metrics.addCustomChart(new Metrics.SimplePie("narashite_version", () -> paperVersion)); // narashite
+ 
+                 metrics.addCustomChart(new Metrics.DrilldownPie("java_version", () -> {
+                     Map<String, Map<String, Integer>> map = new HashMap<>();
+diff --git a/src/main/java/io/github/fukiame/narashite/narashiteVersionFetcher.java b/src/main/java/io/github/fukiame/narashite/narashiteVersionFetcher.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..db7bb61c23ddbc9e539fc73745b19a1dd2d0aad2
+--- /dev/null
++++ b/src/main/java/io/github/fukiame/narashite/narashiteVersionFetcher.java
+@@ -0,0 +1,139 @@
++package io.github.fukiame.narashite;
++
++import static net.kyori.adventure.text.Component.text;
++import static net.kyori.adventure.text.format.NamedTextColor.GREEN;
++import static net.kyori.adventure.text.format.NamedTextColor.RED;
++
++import com.destroystokyo.paper.VersionHistoryManager;
++import com.destroystokyo.paper.util.VersionFetcher;
++import com.google.gson.Gson;
++import com.google.gson.JsonObject;
++import java.io.IOException;
++import java.net.URI;
++import java.net.http.HttpClient;
++import java.net.http.HttpRequest;
++import java.net.http.HttpResponse;
++import java.nio.charset.StandardCharsets;
++import java.util.concurrent.TimeUnit;
++import java.util.logging.Level;
++import java.util.logging.Logger;
++import net.kyori.adventure.text.Component;
++import net.kyori.adventure.text.JoinConfiguration;
++import net.kyori.adventure.text.format.NamedTextColor;
++import net.kyori.adventure.text.format.TextDecoration;
++import org.bukkit.craftbukkit.CraftServer;
++import org.jetbrains.annotations.NotNull;
++import org.jetbrains.annotations.Nullable;
++
++public class narashiteVersionFetcher implements VersionFetcher {
++
++    private static final Logger LOGGER = Logger.getLogger("narashiteVersionFetcher");
++    private static final HttpClient client = HttpClient.newHttpClient();
++
++    //private static final URI JENKINS_URI = URI.create("https://ci.pufferfish.host/job/Pufferfish-1.20/lastSuccessfulBuild/buildNumber");
++    private static final String GITHUB_FORMAT = "https://api.github.com/repos/fukiame/narashite/compare/ver/1.20.2...%s";
++
++    private static final HttpResponse.BodyHandler<JsonObject> JSON_OBJECT_BODY_HANDLER = responseInfo -> HttpResponse.BodySubscribers
++            .mapping(
++                    HttpResponse.BodySubscribers.ofString(StandardCharsets.UTF_8),
++                    string -> new Gson().fromJson(string, JsonObject.class)
++            );
++
++    @Override
++    public long getCacheTime() {
++        return TimeUnit.MINUTES.toMillis(30);
++    }
++
++    @Override
++    public @NotNull Component getVersionMessage(final @NotNull String serverVersion) {
++        final String[] parts = CraftServer.class.getPackage().getImplementationVersion().split("-");
++        @NotNull Component component;
++
++        if (parts.length != 3) {
++            component = text("Unknown server version.", RED);
++        } else {
++            final String versionString = parts[2];
++
++	    /*
++            try {
++                component = this.fetchJenkinsVersion(Integer.parseInt(versionString));
++            } catch (NumberFormatException e) { */
++                component = this.fetchGithubVersion(versionString.substring(1, versionString.length() - 1));
++            //}
++        }
++
++        final @Nullable Component history = this.getHistory();
++        return history != null ? Component
++                .join(JoinConfiguration.noSeparators(), component, Component.newline(), this.getHistory()) : component;
++    }
++
++    /*
++    private @NotNull Component fetchJenkinsVersion(final int versionNumber) {
++        final HttpRequest request = HttpRequest.newBuilder(JENKINS_URI).build();
++        try {
++            final HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
++            if (response.statusCode() != 200) {
++                return text("Received invalid status code (" + response.statusCode() + ") from server.", RED);
++            }
++
++            int latestVersionNumber;
++            try {
++                latestVersionNumber = Integer.parseInt(response.body());
++            } catch (NumberFormatException e) {
++                LOGGER.log(Level.WARNING, "Received invalid response from Jenkins \"" + response.body() + "\".");
++                return text("Received invalid response from server.", RED);
++            }
++
++            final int versionDiff = latestVersionNumber - versionNumber;
++            return this.getResponseMessage(versionDiff);
++        } catch (IOException | InterruptedException e) {
++            LOGGER.log(Level.WARNING, "Failed to look up version from Jenkins", e);
++            return text("Failed to retrieve version from server.", RED);
++        }
++    }
++    */
++
++    // Based off code contributed by Techcable <Techcable@outlook.com> in Paper/GH-65
++    private @NotNull Component fetchGithubVersion(final @NotNull String hash) {
++        final URI uri = URI.create(String.format(GITHUB_FORMAT, hash));
++        final HttpRequest request = HttpRequest.newBuilder(uri).build();
++        try {
++            final HttpResponse<JsonObject> response = client.send(request, JSON_OBJECT_BODY_HANDLER);
++            if (response.statusCode() != 200) {
++                return text("Received invalid status code (" + response.statusCode() + ") from server.", RED);
++            }
++
++            final JsonObject obj = response.body();
++            final int versionDiff = obj.get("behind_by").getAsInt();
++
++            return this.getResponseMessage(versionDiff);
++        } catch (IOException | InterruptedException e) {
++            LOGGER.log(Level.WARNING, "Failed to look up version from GitHub", e);
++            return text("Failed to retrieve version from server.", RED);
++        }
++    }
++
++    private @NotNull Component getResponseMessage(final int versionDiff) {
++        return switch (Math.max(-1, Math.min(1, versionDiff))) {
++            case -1 -> text("You are running an unsupported version of narashite.", RED);
++            case 0 -> text("You are on the latest version!", GREEN);
++            default -> text("You are running " + versionDiff + " version" + (versionDiff == 1 ? "" : "s") + " beyond. " +
++                            "Please update your server when possible to maintain stability, security, and receive the latest optimizations.",
++                    RED);
++        };
++    }
++
++    private @Nullable Component getHistory() {
++        final VersionHistoryManager.VersionData data = VersionHistoryManager.INSTANCE.getVersionData();
++        if (data == null) {
++            return null;
++        }
++
++        final String oldVersion = data.getOldVersion();
++        if (oldVersion == null) {
++            return null;
++        }
++
++        return Component.text("Previous version: " + oldVersion, NamedTextColor.GRAY, TextDecoration.ITALIC);
++    }
++}
+diff --git a/src/main/java/net/minecraft/server/MinecraftServer.java b/src/main/java/net/minecraft/server/MinecraftServer.java
+index 58d076e2a8fa1cf56c4c8d15a502e85fcf48aa90..593fb30300bda3cd9b9f68b1b2938f1ff2e02bd2 100644
+--- a/src/main/java/net/minecraft/server/MinecraftServer.java
++++ b/src/main/java/net/minecraft/server/MinecraftServer.java
+@@ -1699,7 +1699,7 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+ 
+     @DontObfuscate
+     public String getServerModName() {
+-        return "Pufferfish"; // Pufferfish - Pufferfish > // Paper - Paper > // Spigot - Spigot > // CraftBukkit - cb > vanilla!
++        return "narashite"; // twilight - narashite // Pufferfish - Pufferfish > // Paper - Paper > // Spigot - Spigot > // CraftBukkit - cb > vanilla!
+     }
+ 
+     public SystemReport fillSystemReport(SystemReport details) {
+diff --git a/src/main/java/org/bukkit/craftbukkit/CraftServer.java b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
+index 41b063528862e32245bdd1040544e417f99c598e..a3117b2396c843786f5bef86e72736d027ff4f3f 100644
+--- a/src/main/java/org/bukkit/craftbukkit/CraftServer.java
++++ b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
+@@ -267,7 +267,7 @@ import javax.annotation.Nullable; // Paper
+ import javax.annotation.Nonnull; // Paper
+ 
+ public final class CraftServer implements Server {
+-    private final String serverName = "Pufferfish"; // Paper // Pufferfish
++    private final String serverName = "narashite"; // Paper // Pufferfish // narashite
+     private final String serverVersion;
+     private final String bukkitVersion = Versioning.getBukkitVersion();
+     private final Logger logger = Logger.getLogger("Minecraft");
+diff --git a/src/main/java/org/bukkit/craftbukkit/util/Versioning.java b/src/main/java/org/bukkit/craftbukkit/util/Versioning.java
+index 80553face9c70c2a3d897681e7761df85b22d464..ab6cee1e91d31e84ff3069730af7899842217608 100644
+--- a/src/main/java/org/bukkit/craftbukkit/util/Versioning.java
++++ b/src/main/java/org/bukkit/craftbukkit/util/Versioning.java
+@@ -11,7 +11,7 @@ public final class Versioning {
+     public static String getBukkitVersion() {
+         String result = "Unknown-Version";
+ 
+-        InputStream stream = Bukkit.class.getClassLoader().getResourceAsStream("META-INF/maven/gg.pufferfish.pufferfish/pufferfish-api/pom.properties"); // Pufferfish
++        InputStream stream = Bukkit.class.getClassLoader().getResourceAsStream("META-INF/maven/io.github.fukiame.narashite/narashite-api/pom.properties"); // narashite
+         Properties properties = new Properties();
+ 
+         if (stream != null) {
