@@ -1,0 +1,31 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Mykyta Komarnytskyy <nkomarn@hotmail.com>
+Date: Sat, 24 Oct 2020 21:03:53 -0500
+Subject: [PATCH] (Yatopia) Smarter statistics ticking
+
+In vanilla, statistics that count time spent for an action (i.e. time played or sneak time) are incremented every tick. This is retarded. With this patch and a configured interval of 20, the statistics are only ticked every 20th tick and are incremented by 20 ticks at a time. This means a lot less ticking with the same accurate counting.
+With an interval of 20, this patch saves roughly 3ms per tick on a server w/ 80 players online.
+
+Original code by YatopiaMC, licensed under MIT
+You can find the original code on https://github.com/YatopiaMC/Yatopia
+
+diff --git a/src/main/java/net/minecraft/world/entity/player/Player.java b/src/main/java/net/minecraft/world/entity/player/Player.java
+index 8858aa55d32bda0d16ad602a5de557791c779208..1567c0df71f4331fc1591d2f726cd6dabd929774 100644
+--- a/src/main/java/net/minecraft/world/entity/player/Player.java
++++ b/src/main/java/net/minecraft/world/entity/player/Player.java
+@@ -285,6 +285,7 @@ public abstract class Player extends LivingEntity {
+             this.foodData.tick(this);
+             this.awardStat(Stats.PLAY_TIME);
+             this.awardStat(Stats.TOTAL_WORLD_TIME);
++            if (tickCount % 20 == 0) { // narashite - Yatopia
+             if (this.isAlive()) {
+                 this.awardStat(Stats.TIME_SINCE_DEATH);
+             }
+@@ -296,6 +297,7 @@ public abstract class Player extends LivingEntity {
+             if (!this.isSleeping()) {
+                 this.awardStat(Stats.TIME_SINCE_REST);
+             }
++            } // narashite end
+         }
+ 
+         int i = 29999999;
