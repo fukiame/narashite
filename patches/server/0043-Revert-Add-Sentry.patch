@@ -5,10 +5,10 @@ Subject: [PATCH] Revert "Add Sentry"
 
 
 diff --git a/src/main/java/gg/pufferfish/pufferfish/PufferfishConfig.java b/src/main/java/gg/pufferfish/pufferfish/PufferfishConfig.java
-index 3aedc1a13bab57c1db81b7b9742ec06e0acdcdaa..1b16a588252774151ef299b4f0e6fd6449d77d67 100644
+index 79cc1d4fb533463acf1416a145d970b760095a04..01c0c2bcc6dff30f68114779aaf7493a416f916d 100644
 --- a/src/main/java/gg/pufferfish/pufferfish/PufferfishConfig.java
 +++ b/src/main/java/gg/pufferfish/pufferfish/PufferfishConfig.java
-@@ -155,17 +155,6 @@ public class PufferfishConfig {
+@@ -156,17 +156,6 @@ public class PufferfishConfig {
  		return config.getStringList(key);
  	}
  	
