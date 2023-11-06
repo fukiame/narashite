@@ -1,0 +1,36 @@
+name: Patch and Build
+on: [ push, pull_request ]
+jobs:
+  build:
+    # Only run on PRs if the source branch is on someone else's repo
+    if: ${{ github.event_name != 'pull_request' || github.repository != github.event.pull_request.head.repo.full_name }} | !contains(github.event.head_commit.message, '-s')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+          cache: 'gradle'
+      - name: Apply Patches
+        run: |
+          git config --global user.email "actions@github.com" && git config --global user.name "Github Actions"
+          ./gradlew applyPatches
+      - name: Build
+        run: ./gradlew createReobfPaperclipJar
+      - name: release info
+        id: relInfo
+        run: |
+          echo "date=$(date +'%H:%M %m/%d/%Y')" >> $GITHUB_OUTPUT
+          echo "shortHash=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "version=$(grep version gradle.properties | cut -d "=" -f2 | sed -e 's/^[[:space:]]*//')" >> $GITHUB_OUTPUT
+          echo "mcversion=$(grep mcVersion gradle.properties | cut -d "=" -f2 | sed -e 's/^[[:space:]]*//')" >> $GITHUB_OUTPUT
+      - uses: "marvinpinto/action-automatic-releases@latest"
+        if: github.ref_name == 'ver/${{ steps.relInfo.outputs.mcversion }}'
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "${{ steps.relInfo.outputs.mcversion }}-${{ github.run_number }}"
+          prerelease: false
+          title: "narashite ${{ steps.relInfo.outputs.mcversion }} ${{ steps.relInfo.outputs.date }} ${{ steps.relInfo.outputs.shortHash }}"
+          files: ./build/libs/narashite-paperclip-${{ steps.relInfo.outputs.version }}-reobf.jar
