@@ -6,10 +6,10 @@ Subject: [PATCH] Revert "Add Sentry"
 unused, to me lel
 
 diff --git a/build.gradle.kts b/build.gradle.kts
-index 0b87f34c2bb5a2f72124912a62ea393b19b1f3a3..20bfcb9e0d015e4fb66d36df631ad4cd901aeab1 100644
+index b9c75a190dbd7a90ac5ef0fbc6e6fe34806acc4e..5330ccc654f84a12bf03be1a3c57bc9369dac2af 100644
 --- a/build.gradle.kts
 +++ b/build.gradle.kts
-@@ -46,7 +46,6 @@ dependencies {
+@@ -47,7 +47,6 @@ dependencies {
      apiAndDocs("net.kyori:adventure-text-logger-slf4j")
      api("org.apache.logging.log4j:log4j-api:$log4jVersion")
      api("org.slf4j:slf4j-api:$slf4jVersion")
